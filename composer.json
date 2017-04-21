@@ -9,8 +9,7 @@
         }
     ],
     "require": {
-        "ext-openssl": "*",
-        "topthink/framework":"~5.0"
+        "ext-openssl": "*"
     },
     "autoload": {
         "psr-4": {
