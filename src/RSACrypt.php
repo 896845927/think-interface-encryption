@@ -1,11 +1,9 @@
 <?php
 namespace mrmiao\encryption;
 
-use think\Config;
-use think\Exception;
-
 /**
  * 注意
+ * 配置文件rsa_config.php位于 application/extra目录下
  * 在正式服务器环境中,必须把rsa_config_path文件中的debug设置为false
  */
 
@@ -29,11 +27,17 @@ use think\Exception;
 class RSACrypt
 {
     const rsa_config_path = APP_PATH.'extra'.DIRECTORY_SEPARATOR.'rsa_config.php';
+    const extra_path = APP_PATH.'extra';
+
     //默认设置返回密文
     protected $response_crypt = 1;
 
     //生成rsa加密使用的key和配置文件
     static function makeRSAKey(){
+        //如果不存在自动加载的额外配置目录,则创建
+        if (!file_exists(self::extra_path))
+            mkdir(self::extra_path);
+        //检查到不存在 rsa 配置文件,则创建
         $path_name = self::rsa_config_path;
         if (!file_exists($path_name)){
             $config = array('private_key_bits' => 1024);
@@ -52,13 +56,11 @@ class RSACrypt
 <?php
 //配置文件
 return [
-    'rsa_config'=>[
-        'debug'=>true,
-        'request_privKey'=>'{$request_privKey}',
-        'request_pubKey'=>'{$request_pubKey}',
-        'response_privKey'=>'{$response_privKey}',
-        'response_pubKey'=>'{$response_pubKey}',
-    ]
+    'debug'=>true,
+    'request_privKey'=>'{$request_privKey}',
+    'request_pubKey'=>'{$request_pubKey}',
+    'response_privKey'=>'{$response_privKey}',
+    'response_pubKey'=>'{$response_pubKey}',
 ];
 EOT;
 
@@ -71,13 +73,12 @@ EOT;
      * @param $name
      * @param $arguments
      * @return mixed
-     * @throws Exception
+     * @throws \Exception
      */
     public function __call($name, $arguments){
         if (!file_exists(self::rsa_config_path))
-            throw new Exception('RSA Config Missing');
+            throw new \Exception('RSA Config Missing');
 
-//        Config::load(self::rsa_config_path);
         return call_user_func_array([__CLASS__,$name],$arguments);
     }
 
@@ -96,7 +97,7 @@ EOT;
         //解析
         $request_param = $bool ? $request_param : self::request_decrypt($param,config('rsa_config.request_privKey'));
         if ($request_param === null)
-            throw new Exception('Request Param Abnormal');
+            throw new \Exception('Request Param Abnormal');
 
         //更新返回是否使用密文
         $this->response_crypt = isset($request_param['hamburger_coke']) ? $request_param['hamburger_coke']:0;
