@@ -37,7 +37,6 @@ namespace mrmiao\encryption;
  * 需要提供给APP端rsa_config配置文件里的 request_pubKey 和 response_privKey
  */
 
-
 /**
  * 如何设置明文请求调试
  * 1.请求必须是json字串
@@ -143,7 +142,6 @@ EOT;
         if (config('rsa_config.debug')){
             throw new \Exception($data['message']);
         }
-//        abort($this->response($data));
         abort(json($data));
     }
 
