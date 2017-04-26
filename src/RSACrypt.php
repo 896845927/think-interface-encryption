@@ -1,42 +1,42 @@
 <?php
 namespace mrmiao\encryption;
 
-    /**
-     * 预定义了异常 code
-     * 100 缺少配置文件
-     * 101 请求参数解析失败
-     * 102 请求方式错误
-     * 103 请求参数数量与规则不符
-     * 104 错误的请求参数
-     */
+/**
+ * 预定义了异常 code
+ * 100 缺少配置文件
+ * 101 请求参数解析失败
+ * 102 请求方式错误
+ * 103 请求参数数量与规则不符
+ * 104 错误的请求参数
+ */
 
-    /**
-     * 请求参数支持严格规则
-     * $rule 严格设定的参数规则,['参数名'=>'参数类型']
-     * 参数类型包括,会强制转换类型
-     * a 数组
-     * d 整数
-     * f 浮点数
-     * b 布尔值
-     * s 字串
-     */
+/**
+ * 请求参数支持严格规则
+ * $rule 严格设定的参数规则,['参数名'=>'参数类型']
+ * 参数类型包括,会强制转换类型
+ * a 数组
+ * d 整数
+ * f 浮点数
+ * b 布尔值
+ * s 字串
+ */
 
-    /**
-     * 注意
-     * 配置文件rsa_config.php位于 application/extra目录下
-     * debug设置,本地开发环境中设为 true; 线上环境中设为 false;
-     */
+/**
+ * 注意
+ * 配置文件rsa_config.php位于 application/extra目录下
+ * debug设置,本地开发环境中设为 true; 线上环境中设为 false;
+ */
 
-    /**
-     * 命令行生成配置文件
-     * 在项目目录下使用命令行命令 php think MakeRSAConfig
-     */
+/**
+ * 命令行生成配置文件
+ * 在项目目录下使用命令行命令 php think MakeRSAConfig
+ */
 
 /**
  * 对接app
  * 需要提供给APP端rsa_config配置文件里的 request_pubKey 和 response_privKey
  */
-use think\Response;
+
 
 /**
  * 如何设置明文请求调试
@@ -103,7 +103,7 @@ EOT;
     //类初始化时检查是否存在配置文件
     public function __construct(){
         if (!file_exists(self::rsa_config_path))
-            abort(Response\Json::create(self::exception_response['miss_config']));
+            abort(json(self::exception_response['miss_config']));
     }
 
 
@@ -143,8 +143,8 @@ EOT;
         if (config('rsa_config.debug')){
             throw new \Exception($data['message']);
         }
-        abort($this->response($data));
-//        abort(Response\Json::create($data));
+//        abort($this->response($data));
+        abort(json($data));
     }
 
     /**
@@ -204,6 +204,7 @@ EOT;
 
     //获取请求参数,必须使用param字段
     protected function request($rule=''){
+
         $param = request()->param('param');
 
         //请求开关开启,可以接受明文请求,尝试json解析
@@ -236,7 +237,7 @@ EOT;
     protected function response($response_arr){
         $bool = (boolean)$this->response_crypt==0;
         $response_data = $bool ? $response_arr: self::response_encrypt($response_arr,config('rsa_config.response_pubKey'));
-        return Response\Json::create($response_data);
+        return json($response_data);
     }
 
     //请求私钥解密
