@@ -13,11 +13,11 @@ Encrypt the JSON-type interface request and return data by using the RSA
 ### 请求参数支持严格规则
  * $rule 严格设定的参数规则,['参数名'=>'参数类型']
  * 参数类型包括,会强制转换类型
- * a 数组
- * d 整数
- * f 浮点数
- * b 布尔值
- * s 字串
+ * array 数组
+ * int 整数
+ * float 浮点数
+ * boolean 布尔值
+ * string 字串
 
 
 
@@ -40,7 +40,7 @@ Encrypt the JSON-type interface request and return data by using the RSA
 ### 如何设置明文请求调试
  * 1.请求必须是json字串
  * 2.在rsa_config_path文件中将debug设置为true
- * 3.在请求参数param下必须设置'hamburger_coke'=>0,来指定返回数据为明文
+
 
 
 
@@ -60,7 +60,7 @@ class Index
     //在方法中实例化加密类
     function encrypt(RSACrypt $crypt){
         //调用request()方法获取请求参数,request方法可选参数数组['参数名'=>'强制转换类型']
-        $param = $crypt->request(['user_id'=>'d','mobile'=>'a','quest_time'=>'d','app_id'=>'d']);
+        $param = $crypt->request(['user_id'=>'int','mobile'=>'array','quest_time'=>'int','app_id'=>'string']);
         //解析后参数变为明文数据
         $param['php_add'] = '正常使用参数数据';
         //调用response()方法返回数据,参数为数组

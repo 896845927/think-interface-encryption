@@ -14,11 +14,11 @@ namespace mrmiao\encryption;
  * 请求参数支持严格规则
  * $rule 严格设定的参数规则,['参数名'=>'参数类型']
  * 参数类型包括,会强制转换类型
- * a 数组
- * d 整数
- * f 浮点数
- * b 布尔值
- * s 字串
+ * array 数组
+ * int 整数
+ * float 浮点数
+ * boolean 布尔值
+ * string 字串
  */
 
 /**
@@ -41,7 +41,6 @@ namespace mrmiao\encryption;
  * 如何设置明文请求调试
  * 1.请求必须是json字串
  * 2.在rsa_config_path文件中将debug设置为true
- * 3.在请求参数param下必须设置'hamburger_coke'=>0,来指定返回数据为明文
  */
 
 class RSACrypt
@@ -60,8 +59,8 @@ class RSACrypt
         'request_param_error'=>['code'=>104,'message'=>'Error params:'],//错误的请求参数
     ];
 
-    //默认设置返回密文
-    protected $response_crypt = 1;
+    //返回值是否加密
+    protected $response_crypt;
 
     //生成rsa加密使用的key和配置文件
     static function makeRSAKey(){
@@ -103,6 +102,9 @@ EOT;
     public function __construct(){
         if (!file_exists(self::rsa_config_path))
             abort(json(self::exception_response['miss_config']));
+
+        //开启debug时默认返回值是明文,关闭默认是密文
+        $this->response_crypt = config('rsa_config.debug') ? 0 : 1;
     }
 
 
@@ -165,23 +167,23 @@ EOT;
             }else{
                 switch (strtolower($v)) {
                     // 数组
-                    case 'a':
+                    case 'array':
                         $param[$k] = (array) $param[$k];
                         break;
                     // 数字
-                    case 'd':
+                    case 'int':
                         $param[$k] = (int) $param[$k];
                         break;
                     // 浮点
-                    case 'f':
+                    case 'float':
                         $param[$k] = (float) $param[$k];
                         break;
                     // 布尔
-                    case 'b':
+                    case 'boolean':
                         $param[$k] = (boolean) $param[$k];
                         break;
                     // 字符串
-                    case 's':
+                    case 'string':
                     default:
                         if (is_scalar($param[$k])) {
                             $param[$k] = (string) $param[$k];
@@ -220,7 +222,7 @@ EOT;
 
 
         //更新返回是否使用密文
-        $this->response_crypt = isset($request_param['hamburger_coke']) ? $request_param['hamburger_coke']:0;
+        $this->response_crypt = isset($request_param['hamburger_coke']) ? $request_param['hamburger_coke']:$this->response_crypt;
 
         if (isset($request_param['hamburger_coke']))
             unset($request_param['hamburger_coke']);
