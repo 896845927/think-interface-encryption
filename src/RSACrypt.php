@@ -39,8 +39,7 @@ namespace mrmiao\encryption;
 
 /**
  * 如何设置明文请求调试
- * 1.请求必须是json字串
- * 2.在rsa_config_path文件中将debug设置为true
+ * 1.在rsa_config_path文件中将debug设置为true
  */
 
 class RSACrypt
@@ -51,6 +50,7 @@ class RSACrypt
     //tp 自动加载额外配置的目录
     const extra_path = APP_PATH.'extra';
 
+    //预设的异常数组
     const exception_response = [
         'miss_config'=>['code'=>100,'message'=>'RSA config missing'],//缺少配置文件
         'request_parse_fail'=>['code'=>101,'message'=>'Request param parsing exception'],//请求参数解析失败
@@ -59,10 +59,8 @@ class RSACrypt
         'request_param_error'=>['code'=>104,'message'=>'Error params:'],//错误的请求参数
     ];
 
-    //返回值是否加密
-    protected $response_crypt;
 
-    //生成rsa加密使用的key和配置文件
+    //生成配置文件的方法,为php命令行调用,生成rsa加密使用的key和配置文件
     static function makeRSAKey(){
         //如果不存在自动加载的额外配置目录,则创建
         if (!file_exists(self::extra_path))
@@ -102,16 +100,13 @@ EOT;
     public function __construct(){
         if (!file_exists(self::rsa_config_path))
             abort(json(self::exception_response['miss_config']));
-
-        //开启debug时默认返回值是明文,关闭默认是密文
-        $this->response_crypt = config('rsa_config.debug') ? 0 : 1;
     }
 
 
     /**
      * 使用魔术方法统一请求和返回入口,作为前置钩子hook
-     * @param $name
-     * @param $arguments
+     * @param $name,请求方法名
+     * @param $arguments,请求参数数组
      * @return mixed
      * @throws \Exception
      */
@@ -125,7 +120,8 @@ EOT;
 
     /**
      * 请求方式检查
-     * 未开启调试模式时,只运行 post 请求
+     * 调试模式,不限制请求类型
+     * 接口模式,限制为只接受post请求
      */
     protected function checkRequestMethod(){
         if (config('rsa_config.debug')==false){
@@ -137,6 +133,8 @@ EOT;
 
     /**
      * 抛出异常
+     * 调试模式,抛出html格式异常
+     * 接口模式,向app端发送json提示
      * @param $data
      * @throws \Exception
      */
@@ -149,8 +147,12 @@ EOT;
 
     /**
      * 请求参数规则检验
-     * @param array $param 解析后去除了hamburger_coke标识的请求参数
+     * @param array $param 数组,经过解析的明文数组格式请求参数
      * @param array $rule 严格设定的参数规则,['参数名'=>'参数类型']
+     * 各参数根据规则强制转换变量类型
+     * 抛出异常情况:
+     * 1.请求参数数量与规则不符
+     * 2.请求参数名称与规则不符
      */
     protected function paramRuleCheck(&$param,$rule){
         $pc = count($param);
@@ -202,30 +204,26 @@ EOT;
 
     }
 
-    //获取请求参数,必须使用param字段
+    /**
+     * 加密类获取请求参数的统一方法
+     * 接口模式下,密文请求统一放在参数param下
+     * @param string $rule,数组,可选参数,设定请求参数检测规则
+     * @return mixed
+     */
     protected function request($rule=''){
-
-        $param = request()->param('param');
 
         //请求开关开启,可以接受明文请求,尝试json解析
         if (config('rsa_config.debug')){
-            $request_param = json_decode($param,true);
+            $request_param = request()->param();
+        }else{
+            $param = request()->param('param');
+            $request_param = self::request_decrypt($param,$this->rsa_config['rsa_config.request_privKey']);
         }
-        //求布尔值,未开启开关,强制密文;是否通过 json 解析出了$request_param
-        $bool = config('rsa_config.debug') && isset($request_param) && (boolean)$request_param;
 
-        //解析(开启调试,并 json 解析出数组,则使用明文请求参数;否则,尝试解析密文)
-        $request_param = $bool ? $request_param : self::request_decrypt($param,config('rsa_config.request_privKey'));
         //验证请求参数
         if ($request_param === null)
             $this->throwException(self::exception_response['request_parse_fail']);
 
-
-        //更新返回是否使用密文
-        $this->response_crypt = isset($request_param['hamburger_coke']) ? $request_param['hamburger_coke']:$this->response_crypt;
-
-        if (isset($request_param['hamburger_coke']))
-            unset($request_param['hamburger_coke']);
         //如果严格设定了请求参数规则,则进行检验
         if ($rule)
             $this->paramRuleCheck($request_param,$rule);
@@ -233,19 +231,38 @@ EOT;
         return $request_param;
     }
 
-    //处理返回数字,根据加密请求的参数hamburger_coke来确定返回 密文或明文
-    protected function response($response_arr){
-        $bool = (boolean)$this->response_crypt==0;
-        $response_data = $bool ? $response_arr: self::response_encrypt($response_arr,config('rsa_config.response_pubKey'));
+    /**
+     * 处理返回数据
+     * @param $response_arr,数组,加密类要返回的数据
+     * @param bool $encrypt,布尔值,决定是否对返回数据加密,默认不加密
+     * @return mixed
+     */
+    protected function response($response_arr,$encrypt=false){
+        $response_data = $encrypt ?
+            self::response_encrypt($response_arr,config('rsa_config.response_pubKey')):
+            $response_arr;
         return json($response_data);
     }
 
-    //请求私钥解密
+    /**
+     * 使用$request_privKey为请求密文解密
+     * 先对请求密文进行base64解码,再进行密文解密
+     * @param $param,请求密文
+     * @param $request_privKey,私钥,RSA算法,为请求密文数据解密用,app端存有对应公钥
+     * @return mixed
+     */
     protected function request_decrypt($param,$request_privKey){
         $decrypted = $this->ssl_decrypt(base64_decode($param),'private',$request_privKey);
         return json_decode($decrypted,true);
     }
-    //返回公钥加密
+
+    /**
+     * 使用$response_pubKey为返回数据加密
+     * 为了密文乱码支持传输,对加密后密文进行base64转换
+     * @param $response_arr,数组,返回数据明文,要加密的数据
+     * @param $response_pubKey,公钥,RSA算法,为返回数据加密用,app端存有对应私钥
+     * @return string
+     */
     protected function response_encrypt($response_arr,$response_pubKey){
         //公钥加密
         $encrypted = $this->ssl_encrypt(json_encode($response_arr),'public',$response_pubKey);

@@ -1,6 +1,13 @@
 # think-interface-encryption
 Encrypt the JSON-type interface request and return data by using the RSA 
 
+### 这个扩展包深度依赖TP5框架
+ * 使用到大量的tp框架下的帮助函数
+ * 加密类依赖了框架的配置文件的自动加载模式
+ * 加密类配置文件生成依赖了框架的命令行方式
+
+
+
 ### 预定义了异常 code
  * 100 缺少配置文件
  * 101 请求参数解析失败
@@ -22,9 +29,11 @@ Encrypt the JSON-type interface request and return data by using the RSA
 
 
 ### 注意
- * 请求强制要求为json类型,请求数据统一强制使用$_REQUEST['param']来获取(既app端统一请求param来放置请求数据)
  * 配置文件rsa_config.php位于 application/extra目录下
- * debug设置,本地开发环境中设为 true; 线上环境中设为 false;
+ * debug设置,本地开发环境中设为 true,调试模式; 线上环境中设为 false,接口模式;
+ * 在接口模式下,请求强制要求为json类型
+ * 在接口模式下,请求数据统一强制使用$_REQUEST['param']来获取(既app端统一请求param来放置请求密文数据)
+
 
 
 
@@ -38,16 +47,12 @@ Encrypt the JSON-type interface request and return data by using the RSA
 
 
 ### 如何设置明文请求调试
- * 1.请求必须是json字串
- * 2.在rsa_config_path文件中将debug设置为true
+ * 在rsa_config_path文件中将debug设置为true
 
 
 
 
-生成配置文件命令
-php think MakeRSAConfig
-
-调用示例
+### 调用示例
 ````
 <?php
 namespace app\index\controller;
@@ -64,7 +69,7 @@ class Index
         //解析后参数变为明文数据
         $param['php_add'] = '正常使用参数数据';
         //调用response()方法返回数据,参数为数组
-        return $crypt->response(['code'=>200,'message'=>'success','data'=>$param]);
+        return $crypt->response(['code'=>200,'message'=>'success','data'=>$param],true);
     }
 }
 ```
