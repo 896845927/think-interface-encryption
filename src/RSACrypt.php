@@ -217,7 +217,7 @@ EOT;
             $request_param = request()->param();
         }else{
             $param = request()->param('param');
-            $request_param = self::request_decrypt($param,$this->rsa_config['rsa_config.request_privKey']);
+            $request_param = self::request_decrypt($param,config('rsa_config.request_privKey'));
         }
 
         //验证请求参数
