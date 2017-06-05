@@ -238,6 +238,9 @@ EOT;
      * @return mixed
      */
     protected function response($response_arr,$encrypt=false){
+        //如果开启了 debug 模式,所有返回都强制为明文
+        if (config('rsa_config.debug'))
+            $encrypt = false;
         $response_data = $encrypt ?
             self::response_encrypt($response_arr,config('rsa_config.response_pubKey')):
             $response_arr;
